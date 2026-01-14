@@ -227,7 +227,7 @@ export function createTextItem(text = '', tapestryId: string): TextItemCreateDto
 export function createActionButtonItem(text = '', tapestryId: string): ActionButtonItemCreateDto {
   return {
     type: 'actionButton',
-    actionType: 'link',
+    actionType: 'externalLink',
     dropShadow: false,
     position: ORIGIN,
     size: itemSizes.actionButton,
