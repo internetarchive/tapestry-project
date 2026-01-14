@@ -1,4 +1,6 @@
 import express, { Router } from 'express'
+import { isSentryEnabled } from './sentry-init'
+import * as Sentry from '@sentry/node'
 import http from 'http'
 import bodyParser from 'body-parser'
 import cors from 'cors'
@@ -91,6 +93,11 @@ app.use(express.static(path.join(import.meta.dirname, 'assets')))
 
 const httpServer = http.createServer(app)
 void socketServer.init(httpServer)
+
+if (isSentryEnabled) {
+  // The Sentry error handler must be registered before any other error middleware and after all controllers
+  Sentry.setupExpressErrorHandler(app)
+}
 
 app.use(errorHandler)
 

@@ -1,4 +1,5 @@
 /// <reference types="vite-plugin-pwa/client" />
+import './sentry-init'
 import { enableMapSet, enablePatches } from 'immer'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
