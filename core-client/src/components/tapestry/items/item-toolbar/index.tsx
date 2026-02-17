@@ -1,0 +1,46 @@
+import { Rectangle } from 'tapestry-core/src/lib/geometry'
+import { useTapestryConfig } from '../..'
+import { MaybeMenuItem } from '../../../lib/toolbar/index'
+import { ElementToolbar, ElementToolbarProps } from '../../element-toolbar'
+import { useItemMenu } from '../../hooks/use-item-menu'
+import { ACTIVE_ITEM_BORDER_WIDTH } from '../tapestry-item'
+
+export type ItemToolbarProps = Omit<ElementToolbarProps, 'isOpen' | 'items' | 'elementBounds'> & {
+  items?: MaybeMenuItem[]
+  tapestryItemId: string
+}
+
+export function ItemToolbar({ items = [], tapestryItemId: id, ...props }: ItemToolbarProps) {
+  const { useStoreData } = useTapestryConfig()
+  const dto = useStoreData(`items.${id}.dto`)!
+
+  const isInteractive = useStoreData('interactiveElement.modelId') === dto.id
+
+  const menu = useItemMenu(id, [
+    ...items,
+    items.length > 0 && 'separator',
+    'focus',
+    'separator',
+    'info',
+    'separator',
+    'prev',
+    'next',
+  ])
+
+  if (!isInteractive) {
+    return null
+  }
+
+  return (
+    <>
+      <ElementToolbar
+        isOpen
+        items={menu.items}
+        style={{ cursor: 'auto' }}
+        elementBounds={new Rectangle(dto).expand(ACTIVE_ITEM_BORDER_WIDTH)}
+        {...props}
+      />
+      {menu.ui}
+    </>
+  )
+}

@@ -1,0 +1,123 @@
+import { defaults } from 'lodash-es'
+import { createContext, FC, PropsWithChildren, useContext } from 'react'
+import { Id } from 'tapestry-core/src/data-format/schemas/common.js'
+import { ItemType, WebpageType } from 'tapestry-core/src/data-format/schemas/item.js'
+import { ContextHookInvocationError } from '../../errors.js'
+import { StoreHooks } from '../../lib/store/provider.js'
+import { TapestryViewModel } from '../../view-model/index.js'
+import { ItemInfoModal } from './item-info-modal/index.js'
+import { ActionButtonItem } from './items/action-button/index.js'
+import { AudioItem } from './items/audio/index.js'
+import { BookItem } from './items/book/index.js'
+import { ImageItem } from './items/image/index.js'
+import { PdfItem } from './items/pdf/index.js'
+import { TextItem } from './items/text/index.js'
+import { VideoItem } from './items/video/index.js'
+import { WebpageItem } from './items/webpage/index.js'
+import { DefaultMultiselection } from './multiselection/default.js'
+
+/**
+ * Enumeration of z-index values for UI components in the Tapestry. These values are meant to be applied
+ * to Tapestry elements (items or rels) as well as other UI components that appear on the Tapestry canvas
+ * such as menu items and user controls.
+ */
+export enum ZOrder {
+  /**
+   * The default z-index displays tapestry elements in the order in which they were added to the DOM tree.
+   * This is the implicit default behavior of the browser, so it should rarely be specified explicitly.
+   */
+  default = 0,
+  /**
+   * The "selection" Z level is meant for selected tapestry items, for example if the user has performed
+   * a multiselection. If the selected items overlap unselected items, the selected ones should appear on top.
+   */
+  selection,
+  /**
+   * The "interaction" level is meant for the interactive tapestry element. It should appear on top of all
+   * other tapestry elements during the period of interaction. However, it should not overlap any menus
+   * or user controls.
+   */
+  interaction,
+  /**
+   * The "controlUi" level is meant for menus and user controls. They should appear on top of all tapestry
+   * elements, regardless of their state.
+   */
+  controlUi,
+}
+
+export interface TapestryElementComponentProps {
+  id: Id
+}
+
+export type TapestryElementComponent = FC<TapestryElementComponentProps>
+
+export type ItemComponentName<T extends ItemType> = `${Capitalize<T>}Item`
+
+export function itemComponentName<T extends ItemType>(itemType: T): ItemComponentName<T> {
+  return `${itemType[0].toUpperCase()}${itemType.slice(1)}Item` as ItemComponentName<T>
+}
+
+export type TapestryComponentsConfig = Record<
+  ItemComponentName<Exclude<ItemType, 'webpage'>>,
+  TapestryElementComponent
+> & {
+  WebpageItem: Partial<Record<WebpageType, TapestryElementComponent>> & {
+    default: TapestryElementComponent
+  }
+  Rel: TapestryElementComponent
+  Multiselection: FC
+  ItemInfoModal: typeof ItemInfoModal
+}
+
+export interface TapestryConfig extends StoreHooks<TapestryViewModel> {
+  components: TapestryComponentsConfig
+}
+
+export const TapestryConfigContext = createContext<TapestryConfig | null>(null)
+
+export type ProviderConfig = Omit<TapestryConfig, 'components'> & {
+  components?: Partial<TapestryComponentsConfig>
+}
+
+interface TapestryConfigProviderProps extends PropsWithChildren {
+  config: ProviderConfig
+}
+
+export function TapestryConfigProvider({
+  children,
+  config: { components = {}, ...rest },
+}: TapestryConfigProviderProps) {
+  return (
+    <TapestryConfigContext
+      value={{
+        ...rest,
+        components: defaults<Partial<TapestryConfig['components']>, TapestryConfig['components']>(
+          components,
+          {
+            ActionButtonItem,
+            AudioItem,
+            BookItem,
+            ImageItem,
+            PdfItem,
+            TextItem,
+            VideoItem,
+            WebpageItem: { default: WebpageItem },
+            Rel: () => null,
+            Multiselection: DefaultMultiselection,
+            ItemInfoModal,
+          },
+        ),
+      }}
+    >
+      {children}
+    </TapestryConfigContext>
+  )
+}
+
+export function useTapestryConfig(): TapestryConfig {
+  const context = useContext(TapestryConfigContext)
+  if (!context) {
+    throw new ContextHookInvocationError('TapestryConfig')
+  }
+  return context
+}

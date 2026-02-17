@@ -1,0 +1,103 @@
+.root {
+  display: flex;
+  justify-content: center;
+
+  &:global(.submenu) {
+    position: absolute;
+    z-index: 1;
+    top: calc(100% + 16px);
+    left: 0;
+  }
+
+  .wrapper {
+    pointer-events: auto;
+    background-color: var(--theme-background-primary);
+    border-radius: 8px;
+    box-shadow: var(--box-shadow);
+    transition: background-color var(--transition-duration);
+
+    :global(.toolbar-row) {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: max-content;
+      grid-auto-rows: max-content;
+      padding: 8px;
+      gap: 8px;
+    }
+
+    :global(.submenu-item) {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    &.column {
+      :global(.toolbar-row) {
+        grid-auto-flow: row;
+      }
+
+      :global(.submenu-item) {
+        > .root {
+          left: calc(100% + 16px);
+          top: 0;
+        }
+      }
+
+      :global(.separator) {
+        height: 1px;
+        width: 90%;
+        justify-self: center;
+      }
+    }
+
+    :global(.separator) {
+      width: 1px;
+      height: 90%;
+      background-color: var(--theme-border-subtle);
+      align-self: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    :global(.menu-item-wrapper) {
+      display: flex;
+      justify-content: center;
+      position: relative;
+      border: 1px solid transparent;
+
+      &:has(.badge) {
+        border-radius: 8px;
+        border-color: var(--theme-border-subtle);
+      }
+
+      .badge {
+        --size: 14px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        font-size: 8px;
+        font-weight: 600;
+        position: absolute;
+        top: calc(-0.3 * var(--size));
+        right: calc(-0.3 * var(--size));
+        width: var(--size);
+        height: var(--size);
+        border-radius: 50%;
+        background-color: var(--theme-background-brand-secondary);
+        color: var(--color-neutral-0);
+        box-shadow: var(--box-shadow);
+
+        &:empty::after {
+          content: '';
+          display: block;
+          width: calc(0.3 * var(--size));
+          height: calc(0.3 * var(--size));
+          background-color: var(--color-neutral-0);
+          border-radius: 50%;
+        }
+      }
+    }
+  }
+}

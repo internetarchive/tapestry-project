@@ -1,0 +1,25 @@
+.root {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+
+    .title {
+      font-weight: 600;
+      color: var(--theme-text-primary);
+    }
+
+    .logo {
+      background-color: var(--theme-background-brand-secondary);
+      width: 28px;
+      height: 28px;
+      padding: 10px;
+      border-radius: 8px;
+    }
+  }
+}
