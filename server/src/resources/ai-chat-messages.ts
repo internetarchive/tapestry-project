@@ -10,6 +10,7 @@ import { compact, omit } from 'lodash-es'
 import { ConflictError } from '../errors/index.js'
 import { FilePart, ImagePart, UserContent, UserModelMessage } from 'ai'
 import { parseDBItemSource } from '../transformers/item.js'
+import { lookup } from 'mime-types'
 
 async function createAIChatMessage<const T extends Prisma.AiChatMessageCreateArgs>(
   args: Prisma.SelectSubset<T, Prisma.AiChatMessageCreateArgs>,
@@ -61,8 +62,7 @@ async function serializeItemAttachment(
                   ? 'application/pdf'
                   : attachment.item.type === 'book'
                     ? 'application/epub+zip'
-                    : // TODO: Figure out how to find correct media type for audio and video items
-                      `${attachment.item.type}/*`,
+                    : lookup(new URL(source).pathname) || `${attachment.item.type}/*`,
             }
     }
   }
