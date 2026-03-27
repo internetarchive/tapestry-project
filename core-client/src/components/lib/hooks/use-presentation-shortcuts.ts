@@ -4,7 +4,7 @@ import { getAdjacentPresentationSteps } from '../../../view-model/utils'
 import { focusPresentationStep } from '../../../view-model/store-commands/viewport'
 import { useSingleGroupSelection } from './use-single-group-selection'
 import { getPresentationSequence } from 'tapestry-core/src/utils'
-import { mapValues } from 'lodash'
+import { mapValues } from 'lodash-es'
 
 export function usePresentationShortcuts(enable = true) {
   const { useStoreData, useDispatch } = useTapestryConfig()
