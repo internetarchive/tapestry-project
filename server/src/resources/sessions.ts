@@ -16,7 +16,7 @@ import { UserDoesNotExistError } from '../errors/index.js'
 const REFRESH_TOKEN_EXP = 24 * 60 * 60 * 1000 // 1 day in ms
 const SECURE_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
-  sameSite: 'none',
+  sameSite: config.server.secureCookie ? 'none' : 'lax',
   secure: config.server.secureCookie,
   path: `/api/${resources.sessions.create.path}`,
 }

@@ -116,7 +116,7 @@ function bindEndpoint<E extends Endpoint, ListFilter>(
         })
       } else {
         const body = endpoint.requestSchemas.body.parse(
-          req.body,
+          req.body ?? {}
         ) as EndpointTypes<E>['request']['body']['output']
 
         const canAccess = await authorize({ pathParams, query, body }, context)
