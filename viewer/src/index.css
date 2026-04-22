@@ -16,21 +16,34 @@ body,
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.pixi-container {
-  position: absolute;
-  inset: 0;
+.scene-container {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
 
-  > canvas {
-    display: block;
+  &.scene-cursor {
+    &,
+    * {
+      cursor: var(--scene-cursor) !important;
+    }
   }
-}
 
-.dom-container {
-  position: absolute;
-  inset: 0;
-  transform-origin: 0% 0%;
-  user-select: none;
-  -webkit-user-select: none;
+  .pixi-container {
+    position: absolute;
+    inset: 0;
+
+    > canvas {
+      display: block;
+    }
+  }
+
+  .dom-container {
+    position: absolute;
+    inset: 0;
+    transform-origin: 0% 0%;
+    user-select: none;
+    -webkit-user-select: none;
+  }
 }
 
 .zoom-toolbar {

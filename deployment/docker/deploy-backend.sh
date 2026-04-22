@@ -17,6 +17,7 @@ DOCKER_RUN_ENV="-e DB_HOST=$DB_HOST \
 -e REDIS_HOST=$REDIS_HOST \
 -e REDIS_PORT=$REDIS_PORT \
 -e REDIS_USE_TLS=$REDIS_USE_TLS \
+-e SENTRY_DSN=$SENTRY_DSN_SERVER \
 -e EXTERNAL_SERVER_URL=$EXTERNAL_SERVER_URL \
 -e VIEWER_URL=$VIEWER_URL \
 -e PUPPETEER_ARGS=$PUPPETEER_ARGS \
@@ -35,6 +36,6 @@ aws ssm send-command \
   \"docker stop server && docker rm server\",
   \"docker stop worker && docker rm worker\",
   \"docker run -d $DOCKER_RUN_ENV --pull always --restart=unless-stopped -p 3000:3000 --network tapestries-server --name server $SERVER_TAG_LATEST\",\
-  \"docker run -d $DOCKER_RUN_ENV --pull always --restart=unless-stopped --name worker $WORKER_TAG_LATEST\",\
+  \"docker run -d $DOCKER_RUN_ENV --pull always --restart=unless-stopped --init --name worker $WORKER_TAG_LATEST\",\
   \"docker image prune -f\"\
   ]}"

@@ -52,6 +52,9 @@ export const config = deepFreeze(
       REDIS_PORT: Port(6379),
       REDIS_USE_TLS: checkTrue,
 
+      // Sentry
+      SENTRY_DSN: z.string().default(''),
+
       // Worker
       PUPPETEER_ARGS: z.string().default(''),
       S3_CLEAN_UP_CRON_PATTERN: z.string().default('0 0 * * *'),
@@ -59,7 +62,6 @@ export const config = deepFreeze(
       // 5 minute timeout may look too long but some larger tapestries with a lot of iframes load slowly
       // so we better wait for a while in order to take a nicer screenshot.
       TAPESTRY_THUMBNAIL_GENERATION_TIMEOUT: NullishInt(300_000),
-      ITEM_THUMBNAIL_GENERATION_DELAY: NullishInt(120_000),
 
       // Queue monitoring
       JOBS_ADMIN_NAME: z.string().nullish(),
@@ -117,12 +119,14 @@ export const config = deepFreeze(
         port: input.REDIS_PORT,
         useTls: input.REDIS_USE_TLS,
       },
+      sentry: {
+        dsn: input.SENTRY_DSN,
+      },
       worker: {
         puppeteerArgs: input.PUPPETEER_ARGS,
         s3CleanupPattern: input.S3_CLEAN_UP_CRON_PATTERN,
         tapestryThumbnailGenerationDelay: input.TAPESTRY_THUMBNAIL_GENERATION_DELAY,
         tapestryThumbnailGenerationTimeout: input.TAPESTRY_THUMBNAIL_GENERATION_TIMEOUT,
-        itemThumbnailGenerationDelay: input.ITEM_THUMBNAIL_GENERATION_DELAY,
         queueAdminName: input.JOBS_ADMIN_NAME,
         queueAdminPassword: input.JOBS_ADMIN_PASSWORD,
       },

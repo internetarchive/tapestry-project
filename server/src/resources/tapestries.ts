@@ -11,8 +11,7 @@ import {
   TapestryDto,
   TapestryUpdateDto,
 } from 'tapestry-shared/src/data-transfer/resources/dtos/tapestry.js'
-import { queue } from '../tasks/index.js'
-import { config } from '../config.js'
+import { scheduleTapestryThumbnailGeneration } from '../tasks/utils.js'
 import { BadRequestError, ForbiddenError } from '../errors/index.js'
 import { ListParamsOutputDto } from 'tapestry-shared/src/data-transfer/resources/dtos/common.js'
 import { createItems } from './items.js'
@@ -117,20 +116,6 @@ async function orderByInteraction(
   }
 
   return tapestries
-}
-
-export async function scheduleTapestryThumbnailGeneration(tapestryId: string) {
-  await queue.remove(tapestryId)
-  await queue.add(
-    'generate-tapestry-thumbnail',
-    { tapestryId },
-    {
-      jobId: tapestryId,
-      delay: config.worker.tapestryThumbnailGenerationDelay,
-      removeOnComplete: true,
-      removeOnFail: true,
-    },
-  )
 }
 
 function fecthTapestryByPathSegment(
@@ -354,6 +339,9 @@ export const tapestries: RESTResourceImpl<Resources['tapestries'], Prisma.Tapest
           where: {
             OR: [{ item: { tapestryId: id } }, { group: { tapestryId: id } }],
           },
+        })
+        await tx.imageAsset.deleteMany({
+          where: { thumbnailForItems: { some: { tapestryId: id } } },
         })
         await tx.tapestry.delete({ where: { id } })
       })

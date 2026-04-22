@@ -154,7 +154,7 @@ export abstract class ItemController implements TapestryStageController {
   protected onSelectionStart(event: DragStartEvent<TapestryStage>) {
     this.stage.gestureDetector.deactivate()
 
-    const point = this.stage.pixi.tapestry.stage.worldTransform.applyInverse(
+    const point = this.stage.pixi.tapestry.app.stage.worldTransform.applyInverse(
       event.detail.currentPoint,
     )
     this.store.dispatch(
@@ -175,7 +175,7 @@ export abstract class ItemController implements TapestryStageController {
     const pointerSelection = this.store.get('pointerSelection')
     if (!pointerSelection) return
 
-    const point = this.stage.pixi.tapestry.stage.worldTransform.applyInverse(
+    const point = this.stage.pixi.tapestry.app.stage.worldTransform.applyInverse(
       event.detail.currentPoint,
     )
     this.store.dispatch(
@@ -205,20 +205,18 @@ export abstract class ItemController implements TapestryStageController {
     this.store.dispatch(setPointerMode('pan'))
   }
 
-  protected abstract tryNavigateToInternalLink(link: string): boolean
+  protected abstract tryNavigateToInternalState(params: URLSearchParams): boolean
 
   protected handleActionItemClick(id: Id) {
     const item = this.store.get(`items.${id}.dto`)
-    if (item?.type === 'actionButton') {
-      // Removed this once we have more action types
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (item.actionType === 'link' && item.action) {
-        const handledInternalNavigation = this.tryNavigateToInternalLink(item.action)
-        if (!handledInternalNavigation && isHTTPURL(item.action)) {
-          window.open(item.action)
-        } else {
-          return false
-        }
+    if (item?.type === 'actionButton' && item.action) {
+      if (item.actionType === 'internalLink') {
+        const params = new URLSearchParams(item.action)
+        return this.tryNavigateToInternalState(params)
+      }
+
+      if (isHTTPURL(item.action)) {
+        window.open(item.action)
         return true
       }
     }

@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import Color from 'color'
 import 'pixi.js/math-extras'
+import 'pixi.js/ktx2'
 import { memo, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router'
 
@@ -41,6 +42,7 @@ import { setInteractionMode, setSnackbar } from './view-model/store-commands/tap
 import { ViewportDebugData } from './viewport-debug-data'
 import { createPixiApp } from 'tapestry-core-client/src/stage'
 import { PropsWithStyle } from 'tapestry-core-client/src/components/lib'
+import { ZOrder } from 'tapestry-core-client/src/components/tapestry'
 
 function useInteractionModeUrlParam() {
   const { username, slug, edit } = useTapestryPathParams()
@@ -70,23 +72,22 @@ export function Tapestry() {
   const store = useTapestryStore()
   const tapestryDataSyncCommandsRef = usePropRef(useTapestryDataSyncCommands())
   useStageInit(sceneRef, {
-    gestureDectorOptions: { scrollGesture: 'pan', dragToPan: store.get('pointerMode') === 'pan' },
+    gestureDetectorOptions: { scrollGesture: 'pan', dragToPan: store.get('pointerMode') === 'pan' },
     createPixiApps: async () => {
+      const tapestryApp = await createPixiApp(pixiContainerRef.current!, {
+        background: store.get('background'),
+      })
+
       const overlay = new Color(THEMES[store.get('theme')].color('overlay'))
+      const presentationOrderApp = await createPixiApp(presentationOrderContainerRef.current!, {
+        background: overlay.hex(),
+        backgroundAlpha: overlay.alpha(),
+      })
+      presentationOrderApp.app.stage.eventMode = 'static'
+
       return [
-        {
-          name: 'tapestry',
-          app: await createPixiApp(pixiContainerRef.current!, {
-            background: store.get('background'),
-          }),
-        },
-        {
-          name: 'presentationOrder',
-          app: await createPixiApp(presentationOrderContainerRef.current!, {
-            background: overlay.hex(),
-            backgroundAlpha: overlay.alpha(),
-          }),
-        },
+        { name: 'tapestry', app: tapestryApp },
+        { name: 'presentationOrder', app: presentationOrderApp },
       ]
     },
     lifecycleController: (stage) =>
@@ -101,7 +102,7 @@ export function Tapestry() {
       <title>{documentTitle}</title>
       <div className={styles.sceneContainer} ref={sceneRef}>
         <div ref={pixiContainerRef} className="pixi-container" />
-        <TapestryEditorCanvas className="dom-container" />
+        <TapestryEditorCanvas className="dom-container" style={{ zIndex: ZOrder.default }} />
         <div
           ref={presentationOrderContainerRef}
           className={clsx('pixi-container', { [styles.hidden]: !presentationOrderState })}

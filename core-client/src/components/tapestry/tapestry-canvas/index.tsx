@@ -2,71 +2,101 @@ import clsx from 'clsx'
 import { orderBy } from 'lodash-es'
 import { useEffect } from 'react'
 import { Rel } from 'tapestry-core/src/data-format/schemas/rel'
-import { Rectangle } from 'tapestry-core/src/lib/geometry'
+import { LinearTransform, Rectangle } from 'tapestry-core/src/lib/geometry'
 import { IdMap, idMapToArray } from 'tapestry-core/src/utils'
 import {
   itemComponentName,
-  SELECTION_Z_INDEX,
+  ZOrder,
   TapestryElementComponent,
   useTapestryConfig,
 } from '../../../components/tapestry'
 import { themeToDOMWriter } from '../../../theme/theme-to-dom-writer'
 import { ItemViewModel } from '../../../view-model'
-import {
-  getBoundingRectangle,
-  getBounds,
-  getGroupMembers,
-  isItemInSelection,
-  isMultiselection,
-} from '../../../view-model/utils'
+import { getBounds, isItemInSelection, isMultiselection } from '../../../view-model/utils'
 import { PropsWithStyle } from '../../lib'
-import { GroupBackground } from '../group-background'
 import styles from './styles.module.css'
+import { cssTransformForLocation } from '../../../stage/utils'
+import { ItemType } from 'tapestry-core/src/data-format/schemas/item'
 
 export interface TapestryCanvasProps extends PropsWithStyle<
   object,
-  'root' | 'itemContainer' | 'relContainer'
+  'root' | 'itemLocator' | 'relLocator'
 > {
   orderByPosition?: boolean
 }
 
-interface TapestryElementContainerProps extends PropsWithStyle {
+interface TapestryElementLocatorProps extends PropsWithStyle {
   id: string
   bounds: Rectangle
   component: TapestryElementComponent
+  transform: LinearTransform
 }
 
-function TapestryElementContainer({
+const PERSIST_ITEM_TYPES: ItemType[] = ['audio', 'video', 'book', 'pdf', 'text', 'webpage']
+
+function TapestryElementLocator({
   id,
   bounds: { top, left, width, height },
   component: Component,
   className,
-}: TapestryElementContainerProps) {
+  transform,
+}: TapestryElementLocatorProps) {
   const { useStoreData } = useTapestryConfig()
-  const { interactiveElement, selection, items } = useStoreData([
+  const { interactiveElement, selection, disableOptimizations } = useStoreData([
     'interactiveElement',
     'selection',
-    'items',
+    'disableOptimizations',
   ])
+  const item = useStoreData(`items.${id}`)
   const isInteractive = id === interactiveElement?.modelId
-  const isInSelection = isItemInSelection(items[id], selection)
+  const isInSelection = isItemInSelection(item, selection)
+  const hasBeenActive = !!item?.hasBeenActive
+  const hasPersistentState = (PERSIST_ITEM_TYPES as (string | undefined)[]).includes(item?.dto.type)
+  const shouldDisplayDom =
+    disableOptimizations || isInteractive || item?.isPlaying || !item?.snapshotId
+
+  if (!shouldDisplayDom && (!hasBeenActive || !hasPersistentState)) {
+    // The item should currently be hidden since it is not interactive and a placeholder will be displayed instead.
+    // In this case we don't want to keep this item in the DOM at all. The only exception is if the user has interacted
+    // with the item and we want to preserve its internal state. In this case we want to keep the item in the DOM but
+    // hide it somehow so that it doesn't participate in the browser's layout cycles during navigation.
+    return null
+  }
 
   return (
     <div
-      style={{
-        position: 'absolute',
-        top: `${top}px`,
-        left: `${left}px`,
-        width: `${width}px`,
-        height: `${height}px`,
-        // item should be above other selected items in group
-        zIndex: isInteractive
-          ? SELECTION_Z_INDEX + 1
-          : isInSelection
-            ? SELECTION_Z_INDEX
-            : undefined,
-      }}
-      className={clsx(styles.tapestryElementContainer, className, {
+      style={
+        !shouldDisplayDom
+          ? // Don't use display: none since some browsers put web pages (iframes) in background mode and also
+            // PDFs get redrawn and flash on re-entry. Moving the content far off-screen and making sure it is
+            // not involved in the main DOM layout keeps the element "alive" while preserving browser resources.
+            {
+              position: 'fixed',
+              left: '-100000px',
+              top: '0',
+              width: `${width}px`,
+              height: `${height}px`,
+              overflow: 'hidden',
+              opacity: '0',
+              pointerEvents: 'none',
+              contain: 'layout paint style',
+            }
+          : {
+              position: 'absolute',
+              top: `${top}px`,
+              left: `${left}px`,
+              width: `${width}px`,
+              height: `${height}px`,
+              ...cssTransformForLocation({ x: left, y: top }, transform),
+              // item should be above other selected items in group
+              zIndex: isInteractive
+                ? ZOrder.interaction
+                : isInSelection
+                  ? ZOrder.selection
+                  : undefined,
+            }
+      }
+      className={clsx('tapestry-element-locator', className, {
         [styles.inactive]: !isInteractive,
       })}
     >
@@ -76,31 +106,25 @@ function TapestryElementContainer({
 }
 
 function getRelBounds(rel: Rel, items: IdMap<ItemViewModel>) {
-  const fromItem = items[rel.from.itemId]!
-  const toItem = items[rel.to.itemId]!
+  const fromItem = items[rel.from.itemId]
+  const toItem = items[rel.to.itemId]
 
   // When from/to items of a rel change, there is an in-between render where the IDs don't match.
   // Once the useTapestryData hook updates the corresponding values, the component will be rerendered.
-  if (fromItem.dto.id !== rel.from.itemId || toItem.dto.id !== rel.to.itemId) {
+  if (fromItem?.dto.id !== rel.from.itemId || toItem?.dto.id !== rel.to.itemId) {
     return null
   }
 
   return getBounds(rel, { [fromItem.dto.id]: fromItem, [toItem.dto.id]: toItem })
 }
 
-export function TapestryCanvas({ classes, orderByPosition }: TapestryCanvasProps) {
+export function TapestryCanvas({ classes, style, orderByPosition }: TapestryCanvasProps) {
   const { useStoreData, components } = useTapestryConfig()
-  const { translation, scale } = useStoreData('viewport.transform', ['translation', 'scale'])
+  const transform = useStoreData('viewport.transform', ['translation', 'scale'])
   const viewportReady = useStoreData('viewport.ready')
   const { constrainToLayer, action: pointerAction } =
     useStoreData('pointerInteraction', ['constrainToLayer', 'action']) ?? {}
-  const { theme, items, rels, selection, groups } = useStoreData([
-    'theme',
-    'items',
-    'rels',
-    'selection',
-    'groups',
-  ])
+  const { theme, items, rels, selection } = useStoreData(['theme', 'items', 'rels', 'selection'])
 
   useEffect(() => themeToDOMWriter.init(), [])
   useEffect(() => themeToDOMWriter.updateTheme(theme), [theme])
@@ -125,22 +149,20 @@ export function TapestryCanvas({ classes, orderByPosition }: TapestryCanvasProps
     }
 
     return (
-      <TapestryElementContainer
+      <TapestryElementLocator
         key={item.dto.id}
         id={item.dto.id}
         bounds={getBounds(item.dto)}
         component={component}
-        className={classes?.itemContainer}
+        className={classes?.itemLocator}
+        transform={transform}
       />
     )
   }
 
   return (
     <div
-      style={{
-        pointerEvents: constrainToLayer === 'dom' ? 'auto' : 'none',
-        transform: `translate(${translation.dx}px, ${translation.dy}px) scale(${scale})`,
-      }}
+      style={{ pointerEvents: constrainToLayer === 'dom' ? 'auto' : 'none', ...style }}
       className={clsx(
         classes?.root,
         pointerAction && 'pointer-action',
@@ -152,27 +174,18 @@ export function TapestryCanvas({ classes, orderByPosition }: TapestryCanvasProps
         const bounds = getRelBounds(rel.dto, items)
         return (
           bounds && (
-            <TapestryElementContainer
+            <TapestryElementLocator
               key={rel.dto.id}
               id={rel.dto.id}
               bounds={bounds}
               component={components.Rel}
-              className={classes?.relContainer}
+              className={classes?.relLocator}
+              transform={transform}
             />
           )
         )
       })}
-      {orderedItems.filter((item) => !item.dto.groupId).map(renderItem)}
-      {idMapToArray(groups).map((group) => {
-        const members = getGroupMembers(group.dto.id, idMapToArray(items))
-
-        return (
-          <div key={group.dto.id}>
-            <GroupBackground id={group.dto.id} membersBounds={getBoundingRectangle(members)} />
-            {members.map(renderItem)}
-          </div>
-        )
-      })}
+      {orderedItems.map(renderItem)}
       {isMultiselection(selection) && <components.Multiselection />}
     </div>
   )

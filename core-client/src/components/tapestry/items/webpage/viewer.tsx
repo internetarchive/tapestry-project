@@ -1,21 +1,14 @@
 import { isEqual } from 'lodash-es'
-import {
-  DetailedHTMLProps,
-  FC,
-  IframeHTMLAttributes,
-  Ref,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-  useState,
-} from 'react'
+import { FC, Ref, useCallback, useImperativeHandle, useMemo, useState } from 'react'
 import { useMediaParams } from 'tapestry-core-client/src/components/tapestry/hooks/use-media-params'
 import { Id } from 'tapestry-core/src/data-format/schemas/common'
 import { WebpageType } from 'tapestry-core/src/data-format/schemas/item'
 import { parseWebSource, WEB_SOURCE_PARSERS } from 'tapestry-core/src/web-sources'
-import { WebpageItemDto } from 'tapestry-shared/src/data-transfer/resources/dtos/item'
+import { WebpageItem } from 'tapestry-core/src/data-format/schemas/item'
 import { useTapestryConfig } from '../..'
 import { WebpageLoader } from './loader'
+import { WebFrame as WebFrameComponent, WebFrameSwitchProps } from './web-frame'
+import { setItemIsPlaying } from '../../../../view-model/store-commands/tapestry'
 
 const IFRAME_ALLOWED_RESTRICTIONS = [
   'allow-downloads',
@@ -75,23 +68,20 @@ export interface WebpageItemViewerApi {
   reload(): void
 }
 
-export interface WebFrameProps extends DetailedHTMLProps<
-  IframeHTMLAttributes<HTMLIFrameElement>,
-  HTMLIFrameElement
-> {
-  src: string
-  onLoad: () => void
-}
-
 export interface WebpageItemViewerProps {
   id: Id
-  WebFrame?: 'iframe' | FC<WebFrameProps>
+  WebFrame?: FC<WebFrameSwitchProps>
   apiRef?: Ref<WebpageItemViewerApi>
 }
 
-export function WebpageItemViewer({ id, apiRef, WebFrame = 'iframe' }: WebpageItemViewerProps) {
-  const { useStoreData } = useTapestryConfig()
-  const dto = useStoreData(`items.${id}.dto`) as WebpageItemDto
+export function WebpageItemViewer({
+  id,
+  apiRef,
+  WebFrame = WebFrameComponent,
+}: WebpageItemViewerProps) {
+  const { useStoreData, useDispatch } = useTapestryConfig()
+  const dispatch = useDispatch()
+  const dto = useStoreData(`items.${id}.dto`) as WebpageItem
   const displayWebpage = useStoreData(`items.${id}.hasBeenActive`)
   const [webpageLoaded, setWebpageLoaded] = useState(false)
   const [webpageReloadIndex, setWebpageReloadIndex] = useState(0)
@@ -124,12 +114,14 @@ export function WebpageItemViewer({ id, apiRef, WebFrame = 'iframe' }: WebpageIt
   return (
     <WebpageLoader item={dto} displayPage={displayWebpage} pageLoading={!!loading}>
       <WebFrame
+        webpageType={dto.webpageType}
         src={src}
         sandbox={sandbox.join(' ')}
         onLoad={() => setWebpageLoaded(true)}
         key={`reload-${webpageReloadIndex}`}
         allowFullScreen
         allow="autoplay"
+        onPlaybackStateChange={(isPlaying) => dispatch(setItemIsPlaying(id, isPlaying))}
       />
     </WebpageLoader>
   )

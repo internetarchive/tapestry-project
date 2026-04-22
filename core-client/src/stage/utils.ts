@@ -1,5 +1,5 @@
 import { Container } from 'pixi.js'
-import { Point } from 'tapestry-core/src/lib/geometry'
+import { LinearTransform, Point } from 'tapestry-core/src/lib/geometry'
 import { isTouchEvent } from '../lib/dom'
 import {
   HoveredItem,
@@ -11,6 +11,7 @@ import {
 import { ViewContainer } from './renderer/tapestry-element-renderer'
 import { get } from 'lodash-es'
 import { TapestryStage } from '.'
+import { CSSProperties } from 'react'
 
 export const DOM_CONTAINER_CLASS = 'tapestry-component'
 export const DOM_CONTAINER_TYPE_DATA_ATTR = 'componentType'
@@ -33,19 +34,41 @@ export function obtainHoveredDomTarget(eventTarget: HTMLElement): HoverTarget | 
   return null
 }
 
-function obtainHoveredRel(path: Container[]): HoveredRel | null {
-  const viewContainerIndex = path.findIndex(
-    (c) => c instanceof ViewContainer && c.tapestryElement.modelType === 'rel',
-  )
-  if (viewContainerIndex < 0 || viewContainerIndex === path.length - 1) return null
+function obtainHoveredPixiTarget(
+  container: Container,
+): HoveredItem | HoveredRel | HoveredGroup | null {
+  let viewContainer: Container | null = container
+  while (viewContainer && !(viewContainer instanceof ViewContainer)) {
+    viewContainer = viewContainer.parent
+  }
+  if (!viewContainer || !(viewContainer instanceof ViewContainer)) {
+    return null
+  }
 
-  const { modelId } = (path[viewContainerIndex] as ViewContainer).tapestryElement
-  const handle = path[viewContainerIndex + 1].label || undefined
+  if (viewContainer.modelRef.modelType === 'rel') {
+    return {
+      type: 'rel',
+      modelId: viewContainer.modelRef.modelId,
+      uiComponent: container.label || undefined,
+    }
+  }
+
+  if (viewContainer.modelRef.modelType === 'item') {
+    return {
+      type: 'item',
+      modelId: viewContainer.modelRef.modelId,
+      // Assume that when an item is clicked in Pixi, only its drag area can be hovered
+      // XXX: Here again we assume there is a UI component called "dragArea" (see ItemController)
+      // Maybe we should generalize this concept in some way as Tapestry viewer applications
+      // would not have a "drag" area.
+      uiComponent: 'dragArea',
+    }
+  }
 
   return {
-    type: 'rel',
-    modelId,
-    uiComponent: handle,
+    type: 'group',
+    modelId: viewContainer.modelRef.modelId,
+    uiComponent: 'dragArea',
   }
 }
 
@@ -59,8 +82,8 @@ export function obtainHoverTarget(
   }
 
   const point = toPoint(event)
-  const pixiElement = stage.pixi.tapestry.renderer.events.rootBoundary.hitTest(point.x, point.y)
-  const hoveredRel = obtainHoveredRel([pixiElement.parent!, pixiElement])
+  const pixiElement = stage.pixi.tapestry.app.renderer.events.rootBoundary.hitTest(point.x, point.y)
+  const hoveredRel = obtainHoveredPixiTarget(pixiElement)
 
   return hoveredRel ?? hoveredDomElement
 }
@@ -100,4 +123,15 @@ export function toPoint(event: MouseEvent | WheelEvent | Touch | TouchEvent): Po
   return isTouchEvent(event)
     ? toPoint(event.touches.item(0) ?? event.changedTouches[0])
     : { x: event.clientX, y: event.clientY }
+}
+
+export function cssTransformForLocation(
+  { x, y }: Point,
+  tapestryTransform: LinearTransform,
+): CSSProperties {
+  const { translation, scale } = tapestryTransform
+  return {
+    transformOrigin: `${-x}px ${-y}px`,
+    transform: `translate(${translation.dx}px, ${translation.dy}px) scale(${scale})`,
+  }
 }

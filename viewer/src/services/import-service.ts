@@ -6,6 +6,7 @@ import {
   type Entry,
   type FileEntry,
 } from '@zip.js/zip.js'
+import { compact } from 'lodash-es'
 import { Store } from 'tapestry-core-client/src/lib/store'
 import { viewModelFromTapestry } from 'tapestry-core-client/src/view-model/utils'
 import {
@@ -15,18 +16,19 @@ import {
   ROOT_FILE,
 } from 'tapestry-core/src/data-format/export'
 import { HexColor } from 'tapestry-core/src/data-format/schemas/common'
-import { hasThumbnail, isMediaItem } from 'tapestry-core/src/utils'
+import { MediaItem } from 'tapestry-core/src/data-format/schemas/item'
+import { isMediaItem } from 'tapestry-core/src/utils'
 
 type ExportItem = NonNullable<CurrentExport['items']>[number]
 
 export class ImportService {
   private entries!: Entry[]
 
-  async parse(file: File | undefined) {
-    if (!file) {
+  async parse(blob: Blob | undefined) {
+    if (!blob) {
       return
     }
-    const zipReader = new ZipReader(new BlobReader(file))
+    const zipReader = new ZipReader(new BlobReader(blob))
     this.entries = await zipReader.getEntries()
 
     const rootEntry = this.findEntry(ROOT_FILE)
@@ -59,21 +61,23 @@ export class ImportService {
     this.entries.find((e) => e.filename === name) as FileEntry | undefined
 
   private parseItem = async (i: ExportItem) => {
-    if (!isMediaItem(i)) {
-      return i
+    const item = { ...i }
+
+    if (isMediaItem(i)) {
+      ;(item as MediaItem).source = (await this.toObjectUrl(i.source)) ?? i.source
     }
 
-    return {
-      ...i,
-      source: (await this.toObjectUrl(i.source)) ?? i.source,
-      thumbnail: hasThumbnail(i)
-        ? {
-            source: (await this.toObjectUrl(i.thumbnail.source))!,
-            size: i.thumbnail.size,
-          }
-        : undefined,
-      customThumbnail: await this.toObjectUrl(i.customThumbnail),
+    item.thumbnail = i.thumbnail && {
+      renditions: compact(
+        await Promise.all(
+          i.thumbnail.renditions.map(async (r) => {
+            const source = await this.toObjectUrl(r.source)
+            return source && { ...r, source }
+          }),
+        ),
+      ),
     }
+    return item
   }
 
   private async toObjectUrl(url: string | undefined | null) {
