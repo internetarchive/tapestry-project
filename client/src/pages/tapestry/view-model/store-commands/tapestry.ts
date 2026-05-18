@@ -27,6 +27,7 @@ export const toggleGroupSelection = convertCommand(baseCommands.toggleGroupSelec
 export const toggleItemSelection = convertCommand(baseCommands.toggleItemSelection)
 export const toggleOutline = convertCommand(baseCommands.toggleOutline)
 export const setSidePane = convertCommand(baseCommands.setSidePane)
+export const setDisableOptimizations = convertCommand(baseCommands.setDisableOptimizations)
 
 export function updateTapestry(
   data: Partial<Pick<TapestryDto, EditableTapestryProps>>,
@@ -67,6 +68,7 @@ export function setInteractionMode(
       (model) => {
         model.interactionMode = mode
       },
+      setDisableOptimizations(mode === 'edit'),
       setSnackbar(`You are in ${mode === 'edit' ? 'Author' : 'Viewer'} mode`),
     )
   }

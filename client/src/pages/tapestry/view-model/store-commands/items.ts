@@ -44,7 +44,9 @@ export function insertItems(
     if (items.length > 0) {
       store.dispatch(setIsZoomingLocked(false))
     }
-    items.forEach((item) => (model.items[item.dto.id] = item))
+    items.forEach(
+      (item) => (model.items[item.dto.id] = { ...item, hasRendered: model.disableOptimizations }),
+    )
   }
 }
 

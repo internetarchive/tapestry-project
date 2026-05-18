@@ -174,10 +174,16 @@ export function fromTapestryDto(
     },
     [],
   )
+
+  const disableOptimizations = mode === 'edit' || deoptimize
+
   const editableTapestryViewModel: EditableTapestryViewModel = {
     ...baseViewModel,
-    disableOptimizations: deoptimize,
-    items: Object.fromEntries(tapestry.items?.map((item) => [item.id, { dto: item }]) ?? []),
+    disableOptimizations,
+    items: Object.fromEntries(
+      tapestry.items?.map((item) => [item.id, { dto: item, hasRendered: disableOptimizations }]) ??
+        [],
+    ),
     rels: Object.fromEntries(tapestry.rels?.map((rel) => [rel.id, { dto: rel }]) ?? []),
     groups: Object.fromEntries(tapestry.groups?.map((group) => [group.id, { dto: group }]) ?? []),
     presentationSteps: arrayToIdMap(presentationStepViewModels, (step) => step.dto.id),
