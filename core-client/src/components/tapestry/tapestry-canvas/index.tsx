@@ -50,12 +50,12 @@ function TapestryElementLocator({
   const item = useStoreData(`items.${id}`)
   const isInteractive = id === interactiveElement?.modelId
   const isInSelection = isItemInSelection(item, selection)
-  const hasRendered = !!item?.hasRendered
+  const hasBeenActive = !!item?.hasBeenActive
   const hasPersistentState = (PERSIST_ITEM_TYPES as (string | undefined)[]).includes(item?.dto.type)
   const shouldDisplayDom =
     disableOptimizations || isInteractive || item?.isPlaying || !item?.snapshotId
 
-  if (!shouldDisplayDom && !(hasRendered && hasPersistentState)) {
+  if (!shouldDisplayDom && (!hasBeenActive || !hasPersistentState)) {
     // The item should currently be hidden since it is not interactive and a placeholder will be displayed instead.
     // In this case we don't want to keep this item in the DOM at all. The only exception is if the user has interacted
     // with the item and we want to preserve its internal state. In this case we want to keep the item in the DOM but

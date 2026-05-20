@@ -18,7 +18,6 @@ export function setInteractiveElement(
     if (element?.modelType === 'item') {
       store.dispatch(selectItem(element.modelId))
       model.items[element.modelId]!.hasBeenActive = true
-      model.items[element.modelId]!.hasRendered = true
     } else if (element) {
       model.selection = {
         itemIds: new Set(),
@@ -218,16 +217,5 @@ export function setSidePane(
   return (model) => {
     model.displaySidePane =
       toggle && displaySidePane === model.displaySidePane ? null : displaySidePane
-  }
-}
-
-export function setDisableOptimizations(
-  disabled: boolean,
-): StoreMutationCommand<TapestryViewModel> {
-  return (model) => {
-    model.disableOptimizations = disabled
-    if (disabled) {
-      Object.keys(model.items).forEach((key) => (model.items[key]!.hasRendered = true))
-    }
   }
 }

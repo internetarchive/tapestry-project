@@ -79,7 +79,6 @@ export interface ItemViewModel<I extends Item = Item> {
   readonly snapshotId?: string | null
   readonly hasBeenActive?: boolean
   readonly isPlaying?: boolean
-  readonly hasRendered?: boolean
 }
 
 export interface RelViewModel<R extends Rel = Rel> {
