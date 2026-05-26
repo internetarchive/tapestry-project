@@ -80,6 +80,7 @@ export class CommentsIndicatorContainer extends Container {
 
     this.updateCommentsCountText(commentsCount)
     this.updateFgColor()
+    this.updateBgColor()
   }
 
   update(newState: CommentsIndicatorContainerState) {
@@ -90,7 +91,7 @@ export class CommentsIndicatorContainer extends Container {
     }
 
     if (bgColor !== this.state.bgColor) {
-      this.updateCommentsIndicatorBackground(bgColor)
+      this.updateBgColor(bgColor)
     }
 
     if (fgColor !== this.state.fgColor) {
@@ -115,12 +116,16 @@ export class CommentsIndicatorContainer extends Container {
     this.chatIcon.style.fill = color
   }
 
+  private updateBgColor(color: LiteralColor = this.state.bgColor) {
+    this.commentsIndicatorBackground.tint = color
+  }
+
   private updateCommentsCountText(count: number) {
     this.commentsCountText.text = count
     this.updateCommentsIndicatorBackground()
   }
 
-  private updateCommentsIndicatorBackground(color?: LiteralColor) {
+  private updateCommentsIndicatorBackground() {
     const calculatedWidth =
       2 * HORIZONTAL_PADDING + this.chatIcon.width + ICON_GAP + this.commentsCountText.width
 
@@ -129,7 +134,7 @@ export class CommentsIndicatorContainer extends Container {
     this.commentsIndicatorBackground.clear()
     this.commentsIndicatorBackground
       .roundRect(0, 0, calculatedWidth, HEIGHT, BORDER_RADIUS)
-      .fill({ color: color ?? this.state.bgColor })
+      .fill({ color: 'white' })
 
     const { x, y } = this.commentsIndicatorBackground.position
     this.hitArea = new Rectangle(x, y, calculatedWidth, HEIGHT)
