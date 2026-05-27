@@ -129,6 +129,7 @@ export interface TapestryViewModel<
    * these optimizations are used when displaying the tapestry or not.
    */
   readonly disableOptimizations?: boolean
+  readonly hideControls?: boolean
   readonly outlinedItemId?: string
   readonly searchTerm?: string | null
   readonly items: Readonly<IdMap<I>>
