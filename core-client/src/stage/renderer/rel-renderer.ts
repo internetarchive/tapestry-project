@@ -12,12 +12,14 @@ import {
 } from '../../view-model/rel-geometry'
 import { ItemViewModel, RelViewModel, TapestryViewModel } from '../../view-model'
 import { TapestryStage } from '..'
-import { Theme, THEMES } from '../../theme/themes'
+import { ThemeName } from '../../theme/themes'
+import { log } from 'tapestry-core/src/lib/algebra'
 
 const DEFAULT_REL_Z_INDEX = 0
 const LINE_SMOOTHNESS = 0.7
 
 const MIN_LINE_STROKE_VISIBLE_WIDTH = 0.7
+const SCALE_LOG_BASE = 1.4
 
 export function drawCurve(gfx: Graphics, curve: Curve, part: 'full' | 'head' | 'tail' = 'full') {
   const start = part === 'tail' ? curve.points.middle : curve.points.start
@@ -48,8 +50,8 @@ export interface RelRenderState<R extends RelViewModel> {
   fromItem?: ItemViewModel
   toItem?: ItemViewModel
   isHighlighted: boolean
-  theme: Theme
-  scale: number
+  theme: ThemeName
+  minLineStrokeWidth: number
 }
 
 export class RelRenderer<R extends RelViewModel> extends TapestryElementRenderer<
@@ -95,8 +97,12 @@ export class RelRenderer<R extends RelViewModel> extends TapestryElementRenderer
       isHighlighted:
         isInteractive ||
         (isHoveredElement(pointerInteractionTarget) && pointerInteractionTarget.modelId === id),
-      theme: THEMES[store.get('theme')],
-      scale: store.get('viewport.transform.scale'),
+      theme: store.get('theme'),
+      minLineStrokeWidth: Math.max(
+        REL_LINE_WIDTHS['light'],
+        MIN_LINE_STROKE_VISIBLE_WIDTH /
+          SCALE_LOG_BASE ** Math.floor(log(SCALE_LOG_BASE, store.get('viewport.transform.scale'))),
+      ),
     }
   }
 
@@ -123,10 +129,7 @@ export class RelRenderer<R extends RelViewModel> extends TapestryElementRenderer
     })
 
     const arrowHeadSize = REL_ARROWHEAD_SIZES[weight]
-    const lineStrokeWidth = Math.max(
-      REL_LINE_WIDTHS[weight],
-      MIN_LINE_STROKE_VISIBLE_WIDTH / state.scale,
-    )
+    const lineStrokeWidth = Math.max(REL_LINE_WIDTHS[weight], state.minLineStrokeWidth)
 
     // Instead of a single cubic Bezier curve, draw two quadratic Bezier curves joined in the middle.
     // This way we will have two separate segments of the curve and we will be able to handle
