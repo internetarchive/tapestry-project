@@ -65,57 +65,59 @@ class SocketServer {
 
   private dbSubscriber?: Subscriber
 
-  async init(server: http.Server) {
-    const io = new Server<ClientToServerEvents, ServerToClientEvents, never, { userId: string }>(
-      server,
-      { path: SOCKET_PATH, cors: { origin: config.server.viewerUrl } },
-    )
-
-    io.use((socket, next) => {
-      const { token } = socket.handshake.auth
-      if (typeof token !== 'string') {
-        return next(new InvalidAccessTokenError())
-      }
-      try {
-        const { userId } = verifySessionJWT(token)
-        socket.data.userId = userId
-        next()
-      } catch (error) {
-        next(error as InvalidCredentialsError)
-      }
-    })
-
-    io.on('connection', (socket) => {
-      const connection = new Connection(socket)
-      this.connections.push(connection)
-
-      socket.on('subscribe', (e: SubscriptionEvent, params: unknown, callback: unknown) => {
-        // @ts-expect-error Hard to convince TS here
-        this.onSubscribe[e](connection, params, callback)
-      })
-
-      socket.on('rtc-signaling-message', (e) =>
-        this.notifyPeers(RTCSignalingMessageSchema.parse(e), e.tapestryId, socket.id),
+  async init(server?: http.Server) {
+    if (server) {
+      const io = new Server<ClientToServerEvents, ServerToClientEvents, never, { userId: string }>(
+        server,
+        { path: SOCKET_PATH, cors: { origin: config.server.viewerUrl } },
       )
 
-      socket.on('disconnect', () => {
-        this.connections
-          .find((c) => c.id === socket.id)
-          ?.subscriptions.forEach((s) => {
-            if (s.name === 'rtc-signaling-message') {
-              this.notifyPeers(
-                {
-                  type: 'disconnect',
-                  senderId: s.params.peerId,
-                },
-                s.params.tapestryId,
-                socket.id,
-              )
-            }
-          })
-        this.connections = this.connections.filter((c) => c.id !== socket.id)
+      io.use((socket, next) => {
+        const { token } = socket.handshake.auth
+        if (typeof token !== 'string') {
+          return next(new InvalidAccessTokenError())
+        }
+        try {
+          const { userId } = verifySessionJWT(token)
+          socket.data.userId = userId
+          next()
+        } catch (error) {
+          next(error as InvalidCredentialsError)
+        }
       })
-    })
+
+      io.on('connection', (socket) => {
+        const connection = new Connection(socket)
+        this.connections.push(connection)
+
+        socket.on('subscribe', (e: SubscriptionEvent, params: unknown, callback: unknown) => {
+          // @ts-expect-error Hard to convince TS here
+          this.onSubscribe[e](connection, params, callback)
+        })
+
+        socket.on('rtc-signaling-message', (e) =>
+          this.notifyPeers(RTCSignalingMessageSchema.parse(e), e.tapestryId, socket.id),
+        )
+
+        socket.on('disconnect', () => {
+          this.connections
+            .find((c) => c.id === socket.id)
+            ?.subscriptions.forEach((s) => {
+              if (s.name === 'rtc-signaling-message') {
+                this.notifyPeers(
+                  {
+                    type: 'disconnect',
+                    senderId: s.params.peerId,
+                  },
+                  s.params.tapestryId,
+                  socket.id,
+                )
+              }
+            })
+          this.connections = this.connections.filter((c) => c.id !== socket.id)
+        })
+      })
+    }
 
     this.dbSubscriber = await initSubscriber()
     this.dbSubscriber.notifications.on(DEFAULT_CHANNEL, async (payload) => {
