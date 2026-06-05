@@ -34,6 +34,10 @@ interface TapestryElementLocatorProps extends PropsWithStyle {
 
 const PERSIST_ITEM_TYPES: ItemType[] = ['audio', 'video', 'book', 'pdf', 'text', 'webpage']
 
+export function hasPersistentState(itemType: ItemType) {
+  return (PERSIST_ITEM_TYPES as (string | undefined)[]).includes(itemType)
+}
+
 function TapestryElementLocator({
   id,
   bounds: { top, left, width, height },
@@ -51,11 +55,10 @@ function TapestryElementLocator({
   const isInteractive = id === interactiveElement?.modelId
   const isInSelection = isItemInSelection(item, selection)
   const hasBeenActive = !!item?.hasBeenActive
-  const hasPersistentState = (PERSIST_ITEM_TYPES as (string | undefined)[]).includes(item?.dto.type)
   const shouldDisplayDom =
     disableOptimizations || isInteractive || item?.isPlaying || !item?.snapshotId
 
-  if (!shouldDisplayDom && (!hasBeenActive || !hasPersistentState)) {
+  if (!shouldDisplayDom && !(hasBeenActive && hasPersistentState(item.dto.type))) {
     // The item should currently be hidden since it is not interactive and a placeholder will be displayed instead.
     // In this case we don't want to keep this item in the DOM at all. The only exception is if the user has interacted
     // with the item and we want to preserve its internal state. In this case we want to keep the item in the DOM but
@@ -65,37 +68,16 @@ function TapestryElementLocator({
 
   return (
     <div
-      style={
-        !shouldDisplayDom
-          ? // Don't use display: none since some browsers put web pages (iframes) in background mode and also
-            // PDFs get redrawn and flash on re-entry. Moving the content far off-screen and making sure it is
-            // not involved in the main DOM layout keeps the element "alive" while preserving browser resources.
-            {
-              position: 'fixed',
-              left: '-100000px',
-              top: '0',
-              width: `${width}px`,
-              height: `${height}px`,
-              overflow: 'hidden',
-              opacity: '0',
-              pointerEvents: 'none',
-              contain: 'layout paint style',
-            }
-          : {
-              position: 'absolute',
-              top: `${top}px`,
-              left: `${left}px`,
-              width: `${width}px`,
-              height: `${height}px`,
-              ...cssTransformForLocation({ x: left, y: top }, transform),
-              // item should be above other selected items in group
-              zIndex: isInteractive
-                ? ZOrder.interaction
-                : isInSelection
-                  ? ZOrder.selection
-                  : undefined,
-            }
-      }
+      style={{
+        position: 'absolute',
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${width}px`,
+        height: `${height}px`,
+        ...cssTransformForLocation({ x: left, y: top }, transform),
+        // item should be above other selected items in group
+        zIndex: isInteractive ? ZOrder.interaction : isInSelection ? ZOrder.selection : undefined,
+      }}
       className={clsx('tapestry-element-locator', className, {
         [styles.inactive]: !isInteractive,
       })}
