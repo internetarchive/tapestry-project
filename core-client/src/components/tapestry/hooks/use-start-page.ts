@@ -7,7 +7,7 @@ export function useStartPage(id: Id) {
     return undefined
   }
 
-  const page = NullishInt().safeParse(searchParams.get('page')).data
+  const page = NullishInt().safeParse(searchParams.get('page') ?? undefined).data
 
   return page ? page - 1 : page
 }

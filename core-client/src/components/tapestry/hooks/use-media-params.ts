@@ -16,8 +16,8 @@ export function useMediaParams(id: Id): MediaParams {
   const autoplay = searchParams.get('autoplay')
 
   return {
-    startTime: NullishInt().safeParse(searchParams.get('startTime')).data,
-    stopTime: NullishInt().safeParse(searchParams.get('stopTime')).data,
+    startTime: NullishInt().safeParse(searchParams.get('startTime') ?? undefined).data,
+    stopTime: NullishInt().safeParse(searchParams.get('stopTime') ?? undefined).data,
     autoplay: autoplay === 'true' ? true : autoplay === 'false' ? false : undefined,
   }
 }
