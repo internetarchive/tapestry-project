@@ -17,6 +17,7 @@ import { PropsWithStyle } from '../../lib'
 import styles from './styles.module.css'
 import { cssTransformForLocation } from '../../../stage/utils'
 import { ItemType } from 'tapestry-core/src/data-format/schemas/item'
+import { isMac, isMobile } from '../../../lib/user-agent'
 
 export interface TapestryCanvasProps extends PropsWithStyle<
   object,
@@ -37,6 +38,8 @@ const PERSIST_ITEM_TYPES: ItemType[] = ['audio', 'video', 'book', 'pdf', 'text',
 export function hasPersistentState(itemType: ItemType) {
   return (PERSIST_ITEM_TYPES as (string | undefined)[]).includes(itemType)
 }
+
+export const displayPersistedState = !(isMobile && isMac)
 
 function TapestryElementLocator({
   id,
@@ -68,16 +71,37 @@ function TapestryElementLocator({
 
   return (
     <div
-      style={{
-        position: 'absolute',
-        top: `${top}px`,
-        left: `${left}px`,
-        width: `${width}px`,
-        height: `${height}px`,
-        ...cssTransformForLocation({ x: left, y: top }, transform),
-        // item should be above other selected items in group
-        zIndex: isInteractive ? ZOrder.interaction : isInSelection ? ZOrder.selection : undefined,
-      }}
+      style={
+        shouldDisplayDom || displayPersistedState
+          ? {
+              position: 'absolute',
+              top: `${top}px`,
+              left: `${left}px`,
+              width: `${width}px`,
+              height: `${height}px`,
+              ...cssTransformForLocation({ x: left, y: top }, transform),
+              // item should be above other selected items in group
+              zIndex: isInteractive
+                ? ZOrder.interaction
+                : isInSelection
+                  ? ZOrder.selection
+                  : undefined,
+            }
+          : // Don't use display: none since some browsers put web pages (iframes) in background mode and also
+            // PDFs get redrawn and flash on re-entry. Moving the content far off-screen and making sure it is
+            // not involved in the main DOM layout keeps the element "alive" while preserving browser resources.
+            {
+              position: 'fixed',
+              left: '-100000px',
+              top: '0',
+              width: `${width}px`,
+              height: `${height}px`,
+              overflow: 'hidden',
+              opacity: '0',
+              pointerEvents: 'none',
+              contain: 'layout paint style',
+            }
+      }
       className={clsx('tapestry-element-locator', className, {
         [styles.inactive]: !isInteractive,
       })}
