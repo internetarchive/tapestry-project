@@ -4,7 +4,6 @@ import { generateTapestryThumbnails } from './generate-tapestry-thumbnails.js'
 import { s3Cleanup } from './s3-cleanup.js'
 import { createTapestry } from './create-tapestry.js'
 import { convertToPdf } from './convert-to-pdf.js'
-import { socketServer } from '../socket/index.js'
 
 async function processTask(job: Job<JobTypeMap[JobName], void, JobName>) {
   switch (job.name) {
@@ -19,7 +18,6 @@ async function processTask(job: Job<JobTypeMap[JobName], void, JobName>) {
   }
 }
 
-void socketServer.init()
 const worker = new Worker(QUEUE_NAME, processTask, BULLMQ_REDIS_BASE_OPTIONS)
 
 worker.on('ready', () => {

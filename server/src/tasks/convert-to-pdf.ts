@@ -3,7 +3,7 @@ import { JobTypeMap } from '.'
 import { prisma } from '../db'
 import { initWebpage, inNewBrowserPage, scheduleTapestryThumbnailGeneration } from './utils'
 import { s3Service, tapestryKey } from '../services/s3-service'
-import { socketServer } from '../socket'
+import { DBSubscriber } from '../socket'
 import { pick } from 'lodash-es'
 import { Item } from '@prisma/client'
 
@@ -67,10 +67,15 @@ export async function convertToPdf({ itemId }: JobTypeMap['convert-to-pdf']) {
     })
 
     await scheduleTapestryThumbnailGeneration(item.tapestryId)
-    socketServer.notifyTapestryUpdate(
-      { deletedIds: { items: [item.id] }, tapestryId: item.tapestryId },
-      undefined,
-    )
+
+    const dbSubscriber = new DBSubscriber()
+    await dbSubscriber.init()
+    await dbSubscriber.notify({
+      name: 'tapestry-updated',
+      tapestryId: item.tapestryId,
+      deletedIds: { items: [item.id] },
+    })
+    await dbSubscriber.close()
   } catch (error) {
     console.error(`Error while converting item ${itemId} to pdf`, error)
   }

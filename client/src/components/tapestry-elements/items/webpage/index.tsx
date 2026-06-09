@@ -79,7 +79,7 @@ function Webpage({ src, onLoad, ...props }: WebFrameSwitchProps) {
     <div className={styles.error}>
       <Icon icon="sentiment_very_dissatisfied" />
       <Text>{`Cannot frame ${src}`}</Text>
-      <Text>{`Switch to wayback machine version or convert to PDF.`}</Text>
+      <Text>Switch to wayback machine version or convert to PDF.</Text>
     </div>
   ) : null
 }

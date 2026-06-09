@@ -30,20 +30,36 @@ import {
 } from 'tapestry-shared/src/data-transfer/rtc-signaling/types.js'
 
 const DEFAULT_CHANNEL = 'default'
+export class DBSubscriber {
+  private subscriber: Subscriber<{ [DEFAULT_CHANNEL]: DBNotification }>
 
-async function initSubscriber() {
-  const subscriber = createSubscriber({
-    connectionString: config.db.connectionString,
-    ssl: config.db.useSsl ? { rejectUnauthorized: false } : false,
-  })
-  await subscriber.connect()
-  await subscriber.listenTo(DEFAULT_CHANNEL)
+  constructor() {
+    this.subscriber = createSubscriber({
+      connectionString: config.db.connectionString,
+      ssl: config.db.useSsl ? { rejectUnauthorized: false } : false,
+    })
+  }
 
-  subscriber.events.on('error', (e) => {
-    console.error('Subscription error', e)
-  })
+  async init() {
+    await this.subscriber.connect()
+    await this.subscriber.listenTo(DEFAULT_CHANNEL)
 
-  return subscriber
+    this.subscriber.events.on('error', (e) => {
+      console.error('Subscription error', e)
+    })
+  }
+
+  onNotification(listener: (notification: DBNotification) => void) {
+    this.subscriber.notifications.on(DEFAULT_CHANNEL, listener)
+  }
+
+  async notify(notification: DBNotification) {
+    return this.subscriber.notify(DEFAULT_CHANNEL, notification)
+  }
+
+  async close() {
+    return this.subscriber.close()
+  }
 }
 
 export class Connection {
@@ -63,64 +79,63 @@ export class Connection {
 class SocketServer {
   private connections: Connection[] = []
 
-  private dbSubscriber?: Subscriber
+  private dbSubscriber?: DBSubscriber
 
-  async init(server?: http.Server) {
-    if (server) {
-      const io = new Server<ClientToServerEvents, ServerToClientEvents, never, { userId: string }>(
-        server,
-        { path: SOCKET_PATH, cors: { origin: config.server.viewerUrl } },
+  async init(server: http.Server) {
+    const io = new Server<ClientToServerEvents, ServerToClientEvents, never, { userId: string }>(
+      server,
+      { path: SOCKET_PATH, cors: { origin: config.server.viewerUrl } },
+    )
+
+    io.use((socket, next) => {
+      const { token } = socket.handshake.auth
+      if (typeof token !== 'string') {
+        return next(new InvalidAccessTokenError())
+      }
+      try {
+        const { userId } = verifySessionJWT(token)
+        socket.data.userId = userId
+        next()
+      } catch (error) {
+        next(error as InvalidCredentialsError)
+      }
+    })
+
+    io.on('connection', (socket) => {
+      const connection = new Connection(socket)
+      this.connections.push(connection)
+
+      socket.on('subscribe', (e: SubscriptionEvent, params: unknown, callback: unknown) => {
+        // @ts-expect-error Hard to convince TS here
+        this.onSubscribe[e](connection, params, callback)
+      })
+
+      socket.on('rtc-signaling-message', (e) =>
+        this.notifyPeers(RTCSignalingMessageSchema.parse(e), e.tapestryId, socket.id),
       )
 
-      io.use((socket, next) => {
-        const { token } = socket.handshake.auth
-        if (typeof token !== 'string') {
-          return next(new InvalidAccessTokenError())
-        }
-        try {
-          const { userId } = verifySessionJWT(token)
-          socket.data.userId = userId
-          next()
-        } catch (error) {
-          next(error as InvalidCredentialsError)
-        }
+      socket.on('disconnect', () => {
+        this.connections
+          .find((c) => c.id === socket.id)
+          ?.subscriptions.forEach((s) => {
+            if (s.name === 'rtc-signaling-message') {
+              this.notifyPeers(
+                {
+                  type: 'disconnect',
+                  senderId: s.params.peerId,
+                },
+                s.params.tapestryId,
+                socket.id,
+              )
+            }
+          })
+        this.connections = this.connections.filter((c) => c.id !== socket.id)
       })
+    })
 
-      io.on('connection', (socket) => {
-        const connection = new Connection(socket)
-        this.connections.push(connection)
-
-        socket.on('subscribe', (e: SubscriptionEvent, params: unknown, callback: unknown) => {
-          // @ts-expect-error Hard to convince TS here
-          this.onSubscribe[e](connection, params, callback)
-        })
-
-        socket.on('rtc-signaling-message', (e) =>
-          this.notifyPeers(RTCSignalingMessageSchema.parse(e), e.tapestryId, socket.id),
-        )
-
-        socket.on('disconnect', () => {
-          this.connections
-            .find((c) => c.id === socket.id)
-            ?.subscriptions.forEach((s) => {
-              if (s.name === 'rtc-signaling-message') {
-                this.notifyPeers(
-                  {
-                    type: 'disconnect',
-                    senderId: s.params.peerId,
-                  },
-                  s.params.tapestryId,
-                  socket.id,
-                )
-              }
-            })
-          this.connections = this.connections.filter((c) => c.id !== socket.id)
-        })
-      })
-    }
-
-    this.dbSubscriber = await initSubscriber()
-    this.dbSubscriber.notifications.on(DEFAULT_CHANNEL, async (payload) => {
+    this.dbSubscriber = new DBSubscriber()
+    await this.dbSubscriber.init()
+    this.dbSubscriber.onNotification(async (payload) => {
       const notification = DBNotificationSchema.parse(payload)
       for (const c of this.connections) {
         if (c.id === notification.socketId) {
@@ -307,7 +322,7 @@ class SocketServer {
 
   private async notify(notification: DBNotification) {
     try {
-      await this.dbSubscriber?.notify(DEFAULT_CHANNEL, notification)
+      await this.dbSubscriber?.notify(notification)
     } catch (error) {
       console.warn('Error while notifying', error)
       // This is intentionally swallowed, since we don't want to crash the server
