@@ -60,6 +60,13 @@ export class DBSubscriber {
   async close() {
     return this.subscriber.close()
   }
+
+  static async fireNotification(notification: DBNotification) {
+    const dbSubscriber = new DBSubscriber()
+    await dbSubscriber.init()
+    await dbSubscriber.notify(notification)
+    await dbSubscriber.close()
+  }
 }
 
 export class Connection {

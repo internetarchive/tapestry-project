@@ -68,14 +68,11 @@ export async function convertToPdf({ itemId }: JobTypeMap['convert-to-pdf']) {
 
     await scheduleTapestryThumbnailGeneration(item.tapestryId)
 
-    const dbSubscriber = new DBSubscriber()
-    await dbSubscriber.init()
-    await dbSubscriber.notify({
+    await DBSubscriber.fireNotification({
       name: 'tapestry-updated',
       tapestryId: item.tapestryId,
       deletedIds: { items: [item.id] },
     })
-    await dbSubscriber.close()
   } catch (error) {
     console.error(`Error while converting item ${itemId} to pdf`, error)
   }
