@@ -31,6 +31,7 @@ import {
   WebFrame,
   WebFrameSwitchProps,
 } from 'tapestry-core-client/src/components/tapestry/items/webpage/web-frame'
+import { useAsyncAction } from 'tapestry-core-client/src/components/lib/hooks/use-async-action'
 
 const checkedSources = new Map<string, boolean>()
 
@@ -78,6 +79,7 @@ function Webpage({ src, onLoad, ...props }: WebFrameSwitchProps) {
     <div className={styles.error}>
       <Icon icon="sentiment_very_dissatisfied" />
       <Text>{`Cannot frame ${src}`}</Text>
+      <Text>Switch to wayback machine version or convert to PDF.</Text>
     </div>
   ) : null
 }
@@ -98,6 +100,14 @@ export const WebpageItem = memo(({ id }: TapestryItemProps) => {
   const isEditMode = useTapestryData('interactionMode') === 'edit'
   const webSourceParams = parseWebSource(dto)
   const { webpageType } = webSourceParams
+
+  const {
+    trigger: convertToPDF,
+    loading: requestingConversion,
+    data: isConvertingToPdf,
+  } = useAsyncAction(({ signal }) =>
+    resource('items').update({ id }, { type: 'pdf' }, undefined, { signal }),
+  )
 
   const dispatch = useDispatch()
   const patch = ({ webpageType, data }: PatchSourceArgument) =>
@@ -184,6 +194,20 @@ export const WebpageItem = memo(({ id }: TapestryItemProps) => {
             },
             'separator',
             refreshButton,
+            'separator',
+            {
+              element:
+                requestingConversion || isConvertingToPdf ? (
+                  <LoadingSpinner style={{ alignSelf: 'center' }} size="16px" />
+                ) : (
+                  <IconButton
+                    icon="picture_as_pdf"
+                    aria-label="Convert to PDF"
+                    onClick={convertToPDF}
+                  />
+                ),
+              tooltip: { side: 'bottom', children: 'Convert to PDF' },
+            },
             'separator',
             ...controls,
           ]
