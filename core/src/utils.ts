@@ -1,8 +1,8 @@
 import { compact, fromPairs, isEmpty, set, zip } from 'lodash-es'
 import { Id, Identifiable } from './data-format/schemas/common.js'
-import { Item, ItemSchema, MediaItem, MediaItemSchema } from './data-format/schemas/item.js'
+import { Item, MediaItem } from './data-format/schemas/item.js'
 import { PresentationStep } from './data-format/schemas/presentation-step.js'
-import { Rel, RelSchema } from './data-format/schemas/rel.js'
+import { Rel } from './data-format/schemas/rel.js'
 import mime from 'mime'
 
 export function isHTTPURL(str: string | null | undefined): str is `http${string}` {
@@ -17,16 +17,26 @@ export function isHTTPURL(str: string | null | undefined): str is `http${string}
   }
 }
 
+export function isObject(obj: unknown): obj is Record<string, unknown> {
+  return !!obj && typeof obj === 'object'
+}
+
 export function isItem(obj: unknown): obj is Item {
-  return ItemSchema.safeParse(obj).success
+  return (
+    isObject(obj) &&
+    typeof obj.id === 'string' &&
+    typeof obj.type === 'string' &&
+    isObject(obj.position) &&
+    isObject(obj.size)
+  )
 }
 
 export function isRel(obj: unknown): obj is Rel {
-  return RelSchema.safeParse(obj).success
+  return isObject(obj) && typeof obj.id === 'string' && isObject(obj.from) && isObject(obj.to)
 }
 
 export function isMediaItem(item: unknown): item is MediaItem {
-  return MediaItemSchema.safeParse(item).success
+  return isObject(item) && typeof item.source === 'string' && isItem(item)
 }
 
 export function fileExtension(name: string): [string, string | undefined] {

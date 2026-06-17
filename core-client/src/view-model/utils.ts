@@ -39,6 +39,7 @@ import {
   IdMap,
   idMapToArray,
   isItem,
+  isRel,
 } from 'tapestry-core/src/utils.js'
 import { Range } from 'tapestry-core/src/lib/algebra.js'
 import { ImageAsset, Item, ItemType } from 'tapestry-core/src/data-format/schemas/item.js'
@@ -90,27 +91,14 @@ export function isRelViewModel<T extends RelViewModel = RelViewModel>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   obj?: Record<string, any>,
 ): obj is T {
-  return (
-    !!obj &&
-    typeof obj.dto === 'object' &&
-    /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-    typeof obj.dto.id === 'string' &&
-    typeof obj.dto.from === 'object' &&
-    typeof obj.dto.to === 'object'
-  )
+  return !!obj && isRel(obj.dto)
 }
 
 export function isItemViewModel<T extends ItemViewModel = ItemViewModel>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   obj?: Record<string, any>,
 ): obj is T {
-  return (
-    !!obj &&
-    typeof obj.dto === 'object' &&
-    typeof obj.dto.id === 'string' &&
-    typeof obj.dto.type === 'string'
-    /* eslint-enable @typescript-eslint/no-unsafe-member-access */
-  )
+  return !!obj && isItem(obj.dto)
 }
 
 export function getType(viewModel: RelViewModel): 'rel'
