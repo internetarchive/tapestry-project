@@ -140,7 +140,7 @@ export function transformViewport(
               neg(mul(translationProgress * newScale, absoluteTranslation)),
             )
           }
-          
+
           updateViewport({ scale: newScale, translation: newTranslation })
         },
         typeof animate === 'object' ? animate : {},
