@@ -20,6 +20,7 @@ import { Select } from '../../../select'
 import { buildToolbarMenu } from '../../item-toolbar'
 import { useItemToolbar } from '../../item-toolbar/use-item-toolbar'
 import { TapestryItem } from '../tapestry-item'
+import { useConvertToPDF } from '../../../../hooks/use-convert-to-pdf'
 
 interface WBMSnapshotsTrackerState {
   snapshots: WBMSnapshotWithDate[]
@@ -108,6 +109,8 @@ export const WaybackPageItem = memo(({ id }: TapestryItemProps) => {
 
   useEffect(() => setLoading(true), [wbmSource])
 
+  const { conversionStarted, convertToPDF } = useConvertToPDF()
+
   const {
     snapshots,
     isInitiallyLoaded: snapshotsInitiallyLoaded,
@@ -174,12 +177,26 @@ export const WaybackPageItem = memo(({ id }: TapestryItemProps) => {
                       }),
                     )
                   }
+                  disabled={conversionStarted}
                 />
               ),
               tooltip: { side: 'bottom', children: 'Switch to original webpage' },
             },
             'separator',
             refreshButton,
+            'separator',
+            {
+              element: conversionStarted ? (
+                <LoadingSpinner style={{ alignSelf: 'center' }} size="16px" />
+              ) : (
+                <IconButton
+                  icon="picture_as_pdf"
+                  aria-label="Convert to PDF"
+                  onClick={() => convertToPDF(id)}
+                />
+              ),
+              tooltip: { side: 'bottom', children: 'Convert to PDF' },
+            },
             'separator',
             ...controls,
           ]

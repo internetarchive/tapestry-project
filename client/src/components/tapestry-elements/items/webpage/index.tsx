@@ -31,7 +31,7 @@ import {
   WebFrame,
   WebFrameSwitchProps,
 } from 'tapestry-core-client/src/components/tapestry/items/webpage/web-frame'
-import { useAsyncAction } from 'tapestry-core-client/src/components/lib/hooks/use-async-action'
+import { useConvertToPDF } from '../../../../hooks/use-convert-to-pdf'
 
 const checkedSources = new Map<string, boolean>()
 
@@ -101,13 +101,7 @@ export const WebpageItem = memo(({ id }: TapestryItemProps) => {
   const webSourceParams = parseWebSource(dto)
   const { webpageType } = webSourceParams
 
-  const {
-    trigger: convertToPDF,
-    loading: requestingConversion,
-    data: isConvertingToPdf,
-  } = useAsyncAction(({ signal }) =>
-    resource('items').update({ id }, { type: 'pdf' }, undefined, { signal }),
-  )
+  const { conversionStarted, convertToPDF } = useConvertToPDF()
 
   const dispatch = useDispatch()
   const patch = ({ webpageType, data }: PatchSourceArgument) =>
@@ -188,6 +182,7 @@ export const WebpageItem = memo(({ id }: TapestryItemProps) => {
                   icon="account_balance"
                   aria-label="Switch to Wayback Machine version"
                   onClick={trySwitchToWBM}
+                  disabled={conversionStarted}
                 />
               ),
               tooltip: { side: 'bottom', children: 'Switch to Wayback Machine version' },
@@ -195,20 +190,23 @@ export const WebpageItem = memo(({ id }: TapestryItemProps) => {
             'separator',
             refreshButton,
             'separator',
-            {
-              element:
-                requestingConversion || isConvertingToPdf ? (
-                  <LoadingSpinner style={{ alignSelf: 'center' }} size="16px" />
-                ) : (
-                  <IconButton
-                    icon="picture_as_pdf"
-                    aria-label="Convert to PDF"
-                    onClick={convertToPDF}
-                  />
-                ),
-              tooltip: { side: 'bottom', children: 'Convert to PDF' },
-            },
-            'separator',
+            ...(!(webpageType && PLAYABLE_WEBPAGE_TYPES.includes(webpageType))
+              ? ([
+                  {
+                    element: conversionStarted ? (
+                      <LoadingSpinner style={{ alignSelf: 'center' }} size="16px" />
+                    ) : (
+                      <IconButton
+                        icon="picture_as_pdf"
+                        aria-label="Convert to PDF"
+                        onClick={() => convertToPDF(id)}
+                      />
+                    ),
+                    tooltip: { side: 'bottom', children: 'Convert to PDF' },
+                  },
+                  'separator',
+                ] as const)
+              : []),
             ...controls,
           ]
         : [refreshButton, 'separator', ...controls]
