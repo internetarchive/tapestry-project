@@ -19,13 +19,14 @@ import {
   parseRootJson,
   CurrentExport,
 } from 'tapestry-core/src/data-format/export/index.js'
-import { Prisma, TapestryCreateJob } from '@prisma/client'
+import { ActionType, Prisma, TapestryCreateJob } from '@prisma/client'
 import { determineWebpageType } from 'tapestry-core/src/web-sources/index.js'
 import { IdMap, idMapToArray, mapIds } from 'tapestry-core/src/utils.js'
 import { fileTypeFromBuffer, FileTypeResult } from 'file-type'
 import { Item } from 'tapestry-core/src/data-format/schemas/item.js'
 import { generateItemThumbnailRenditionName } from 'tapestry-shared/src/utils.js'
 import { generateThumbnails } from '../tasks/utils.js'
+import { Dictionary } from 'lodash'
 
 class ImportError extends BadRequestError {
   constructor(
@@ -60,6 +61,25 @@ function* mediaItems(tapestry: CurrentExport) {
     if (isMediaItem(item)) {
       yield item
     }
+  }
+}
+
+export function actionMap(
+  itemIdMap: Dictionary<string>,
+  action?: string | null,
+  actionType?: ActionType | null,
+) {
+  if (action && actionType === 'internalLink') {
+    const params = new URLSearchParams(action)
+    const focusId = params.get('focus')
+    if (focusId) {
+      params.set('focus', itemIdMap[focusId])
+    }
+    action = params.toString()
+  }
+  return {
+    action,
+    actionType,
   }
 }
 
@@ -213,13 +233,18 @@ export class TapestryImportService {
             await tx.imageAssetRendition.createMany({ data: itemThumbnailRenditions })
           }
 
-          const items = await tx.item.createManyAndReturn({
+          const itemIdMap = mapIds(
+            tapestry.items ?? [],
+            tapestry.items?.map(() => ({ id: crypto.randomUUID() })) ?? [],
+          )
+          await tx.item.createManyAndReturn({
             data: await Promise.all(
               tapestry.items?.map<Promise<Prisma.ItemCreateManyInput>>(async (i) => {
                 const isMedia = isMediaItem(i)
                 const source = isMedia ? i.source : undefined
 
                 return {
+                  id: itemIdMap[i.id],
                   tapestryId,
                   height: i.size.height,
                   width: i.size.width,
@@ -233,7 +258,7 @@ export class TapestryImportService {
                   text: isMedia ? undefined : i.text,
 
                   ...(i.type === 'actionButton'
-                    ? { action: i.action, actionType: i.actionType }
+                    ? actionMap(itemIdMap, i.action, i.actionType)
                     : {}),
 
                   source,
@@ -251,7 +276,6 @@ export class TapestryImportService {
             select: { id: true },
           })
 
-          const itemIdMap = mapIds(tapestry.items ?? [], items)
           await tx.rel.createMany({
             data:
               tapestry.rels?.map<Prisma.RelCreateManyInput>((r) => ({
