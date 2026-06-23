@@ -1,6 +1,6 @@
-import { Tween, Easing } from '@tweenjs/tween.js'
+import { Tween } from '@tweenjs/tween.js'
 import { AnimationOptions, tween } from '../tweening.js'
-import { TapestryViewModel, ZOOM_STEP, MAX_INITIAL_SCALE, MAX_SCALE } from '../index.js'
+import { TapestryViewModel, MAX_INITIAL_SCALE, MAX_SCALE } from '../index.js'
 import {
   LinearTransform,
   Vector,
@@ -23,13 +23,13 @@ import {
   getTranslationRange,
   getMinScale,
   getGroupMembers,
+  getZoomParameters,
 } from '../utils.js'
 import { idMapToArray, pickById } from 'tapestry-core/src/utils.js'
 import {
   cubicBezierPoly,
   Exponent,
   integrate,
-  log,
   Polynomial,
   RungeKutta4,
 } from 'tapestry-core/src/lib/algebra.js'
@@ -37,7 +37,7 @@ import { clamp, debounce } from 'lodash-es'
 import { selectItems, setInteractiveElement } from './tapestry.js'
 import { PresentationStep } from 'tapestry-core/src/data-format/schemas/presentation-step.js'
 
-const CONTINUOUS_ZOOM_SPEED = 3
+export const CONTINUOUS_ZOOM_SPEED = 3
 const ELEMENT_TOOLBAR_PADDING = 65
 
 let zoomAnimation: Tween | undefined = undefined
@@ -202,14 +202,7 @@ export function zoomIn(continuous = false): StoreMutationCommand<TapestryViewMod
       return
     }
     const scale = store.get('viewport.transform.scale')
-    const zoomStep = continuous ? Math.log(MAX_SCALE / scale) : ZOOM_STEP
-    const animate = continuous
-      ? {
-          easing: Easing.Linear.None,
-          duration: log(CONTINUOUS_ZOOM_SPEED, MAX_SCALE / scale),
-          zoomEffect: 'exponential' as const,
-        }
-      : true
+    const { zoomStep, animate } = getZoomParameters(scale, MAX_SCALE, continuous)
     store.dispatch(transformViewport(zoomToCenter(store.get(), zoomStep), animate))
     if (continuous) {
       continuousZoom = 'ZOOM-IN'
@@ -227,14 +220,7 @@ export function zoomOut(continuous = false): StoreMutationCommand<TapestryViewMo
     const { viewport, items } = store.get(['viewport', 'items'])
     const scale = viewport.transform.scale
     const minScale = getMinScale(viewport, idMapToArray(items))
-    const zoomStep = continuous ? Math.log(scale / minScale) : ZOOM_STEP
-    const animate = continuous
-      ? {
-          easing: Easing.Linear.None,
-          duration: log(CONTINUOUS_ZOOM_SPEED, scale / minScale),
-          zoomEffect: 'exponential' as const,
-        }
-      : true
+    const { zoomStep, animate } = getZoomParameters(scale, minScale, continuous)
     store.dispatch(transformViewport(zoomToCenter(store.get(), -zoomStep), animate))
     if (continuous) {
       continuousZoom = 'ZOOM-OUT'

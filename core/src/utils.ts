@@ -1,6 +1,6 @@
 import { compact, fromPairs, isEmpty, set, zip } from 'lodash-es'
 import { Id, Identifiable } from './data-format/schemas/common.js'
-import { Item, MediaItem } from './data-format/schemas/item.js'
+import { Item, ITEM_TYPES, MEDIA_ITEM_TYPES, MediaItem } from './data-format/schemas/item.js'
 import { PresentationStep } from './data-format/schemas/presentation-step.js'
 import { Rel } from './data-format/schemas/rel.js'
 import mime from 'mime'
@@ -26,6 +26,7 @@ export function isItem(obj: unknown): obj is Item {
     isObject(obj) &&
     typeof obj.id === 'string' &&
     typeof obj.type === 'string' &&
+    ITEM_TYPES.includes(obj.type) &&
     isObject(obj.position) &&
     isObject(obj.size)
   )
@@ -36,7 +37,7 @@ export function isRel(obj: unknown): obj is Rel {
 }
 
 export function isMediaItem(item: unknown): item is MediaItem {
-  return isObject(item) && typeof item.source === 'string' && isItem(item)
+  return isItem(item) && MEDIA_ITEM_TYPES.includes(item.type)
 }
 
 export function fileExtension(name: string): [string, string | undefined] {
