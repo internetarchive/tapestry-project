@@ -221,7 +221,7 @@ export function zoomOut(continuous = false): StoreMutationCommand<TapestryViewMo
     const scale = viewport.transform.scale
     const minScale = getMinScale(viewport, idMapToArray(items))
     const { zoomStep, animate } = getZoomParameters(scale, minScale, continuous)
-    store.dispatch(transformViewport(zoomToCenter(store.get(), -zoomStep), animate))
+    store.dispatch(transformViewport(zoomToCenter(store.get(), zoomStep), animate))
     if (continuous) {
       continuousZoom = 'ZOOM-OUT'
       stopContinuosZoom()
