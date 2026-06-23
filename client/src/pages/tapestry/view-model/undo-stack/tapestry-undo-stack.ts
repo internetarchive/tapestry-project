@@ -49,7 +49,9 @@ export class TapestryUndoStack extends BaseUndoStack<EditableTapestryViewModel> 
   }
 
   protected canApply(patches: Patch[]): boolean {
-    // TODO: We will probably need more sophisticated conflict resolution when we start fetching updates from the server.
+    // Patches will be applies only if they refer to existing or newly created elements.
+    // TODO: We will probably need more sophisticated conflict resolution when fetching updates from the server.
+    //       For example, we should filter out only patches refering to non-existent elements, and apply the others.
     const newPaths = patches
       .filter((patch) => patch.op === 'add' && patch.path.length === 2)
       .map((p) => p.path)

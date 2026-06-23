@@ -101,7 +101,7 @@ export const WebpageItem = memo(({ id }: TapestryItemProps) => {
   const webSourceParams = parseWebSource(dto)
   const { webpageType } = webSourceParams
 
-  const { conversionStarted, convertToPDF } = useConvertToPDF()
+  const { conversionStarted, convertToPDFToolbarElement } = useConvertToPDF(id)
 
   const dispatch = useDispatch()
   const patch = ({ webpageType, data }: PatchSourceArgument) =>
@@ -191,21 +191,7 @@ export const WebpageItem = memo(({ id }: TapestryItemProps) => {
             refreshButton,
             'separator',
             ...(!(webpageType && PLAYABLE_WEBPAGE_TYPES.includes(webpageType))
-              ? ([
-                  {
-                    element: conversionStarted ? (
-                      <LoadingSpinner style={{ alignSelf: 'center' }} size="16px" />
-                    ) : (
-                      <IconButton
-                        icon="picture_as_pdf"
-                        aria-label="Convert to PDF"
-                        onClick={() => convertToPDF(id)}
-                      />
-                    ),
-                    tooltip: { side: 'bottom', children: 'Convert to PDF' },
-                  },
-                  'separator',
-                ] as const)
+              ? ([convertToPDFToolbarElement, 'separator'] as const)
               : []),
             ...controls,
           ]

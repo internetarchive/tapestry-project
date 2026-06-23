@@ -109,7 +109,7 @@ export const WaybackPageItem = memo(({ id }: TapestryItemProps) => {
 
   useEffect(() => setLoading(true), [wbmSource])
 
-  const { conversionStarted, convertToPDF } = useConvertToPDF()
+  const { conversionStarted, convertToPDFToolbarElement } = useConvertToPDF(id)
 
   const {
     snapshots,
@@ -185,18 +185,7 @@ export const WaybackPageItem = memo(({ id }: TapestryItemProps) => {
             'separator',
             refreshButton,
             'separator',
-            {
-              element: conversionStarted ? (
-                <LoadingSpinner style={{ alignSelf: 'center' }} size="16px" />
-              ) : (
-                <IconButton
-                  icon="picture_as_pdf"
-                  aria-label="Convert to PDF"
-                  onClick={() => convertToPDF(id)}
-                />
-              ),
-              tooltip: { side: 'bottom', children: 'Convert to PDF' },
-            },
+            convertToPDFToolbarElement,
             'separator',
             ...controls,
           ]
