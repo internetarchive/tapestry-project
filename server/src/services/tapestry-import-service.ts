@@ -26,7 +26,6 @@ import { fileTypeFromBuffer, FileTypeResult } from 'file-type'
 import { Item } from 'tapestry-core/src/data-format/schemas/item.js'
 import { generateItemThumbnailRenditionName } from 'tapestry-shared/src/utils.js'
 import { generateThumbnails } from '../tasks/utils.js'
-import { Dictionary } from 'lodash'
 
 class ImportError extends BadRequestError {
   constructor(
@@ -65,15 +64,19 @@ function* mediaItems(tapestry: CurrentExport) {
 }
 
 export function actionMap(
-  itemIdMap: Dictionary<string>,
+  itemIdMap: IdMap<string>,
+  groupIdMap: IdMap<string>,
   action?: string | null,
   actionType?: ActionType | null,
 ) {
   if (action && actionType === 'internalLink') {
     const params = new URLSearchParams(action)
-    const focusId = params.get('focus')
-    if (focusId) {
-      params.set('focus', itemIdMap[focusId])
+    const focusValue = params.get('focus')
+    if (focusValue) {
+      const newFocusId = itemIdMap[focusValue] ?? groupIdMap[focusValue]
+      if (newFocusId) {
+        params.set('focus', newFocusId)
+      }
     }
     action = params.toString()
   }
@@ -258,7 +261,7 @@ export class TapestryImportService {
                   text: isMedia ? undefined : i.text,
 
                   ...(i.type === 'actionButton'
-                    ? actionMap(itemIdMap, i.action, i.actionType)
+                    ? actionMap(itemIdMap, groupIdMap, i.action, i.actionType)
                     : {}),
 
                   source,
