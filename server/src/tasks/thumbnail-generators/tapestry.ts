@@ -3,12 +3,12 @@ import { URL } from 'url'
 import { config } from '../../config.js'
 import { createJWT } from '../../auth/tokens.js'
 import { REFRESH_TOKEN_COOKIE_NAME } from '../../auth/index.js'
-import { initWebpage, inNewBrowserPage, WebpageConfig } from './webpage.js'
 import { ThumbnailRenditionOutput } from './index.js'
 import { generateThumbnail } from './image.js'
 import { Page, ScreenshotOptions } from 'puppeteer'
 import { Item } from '@prisma/client'
 import { innerFit } from 'tapestry-core/src/lib/geometry.js'
+import { initWebpage, inNewBrowserPage, WebpageConfig } from '../utils.js'
 
 const MAX_ITEM_SIZE = 2000
 
@@ -38,9 +38,9 @@ async function takeItemScreenshot(page: Page, item: Item) {
 
   await page.setViewport({
     // The browser window should be larger than the required element size in order to accommodate
-    // for the tapestry controls around it.
-    width: size.width + 100,
-    height: size.height + 300,
+    // for the element toolbar space
+    width: size.width,
+    height: size.height + 100,
     deviceScaleFactor: 2,
   })
 
@@ -100,6 +100,7 @@ export async function* takeTapestryScreenshots(
 ) {
   const url = new URL(tapestryPath, config.server.viewerUrl)
   url.searchParams.set('deopt', '1')
+  url.searchParams.set('hideControls', '1')
   const src = url.toString()
   const { windowSize, timeout } = site
   console.log(`Taking screenshots of ${src}...`)

@@ -161,6 +161,7 @@ export function fromTapestryDto(
   commentThreads: CommentThreadsDto,
   presentationSteps: PresentationStepDto[],
   deoptimize: boolean,
+  hideControls: boolean,
 ): EditableTapestryViewModel {
   const presentationStepViewModels = presentationSteps.map((dto) => ({ dto }))
 
@@ -176,7 +177,8 @@ export function fromTapestryDto(
   )
   const editableTapestryViewModel: EditableTapestryViewModel = {
     ...baseViewModel,
-    disableOptimizations: deoptimize,
+    disableOptimizations: mode === 'edit' || deoptimize,
+    hideControls,
     items: Object.fromEntries(tapestry.items?.map((item) => [item.id, { dto: item }]) ?? []),
     rels: Object.fromEntries(tapestry.rels?.map((rel) => [rel.id, { dto: rel }]) ?? []),
     groups: Object.fromEntries(tapestry.groups?.map((group) => [group.id, { dto: group }]) ?? []),

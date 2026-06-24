@@ -36,6 +36,7 @@ import {
   setInteractiveElement,
   setPointerInteraction,
   setSelectionRect,
+  setSidePane,
   toggleGroupSelection,
   toggleItemSelection,
 } from '../../pages/tapestry/view-model/store-commands/tapestry'
@@ -47,6 +48,7 @@ import {
   updateTransformTargets,
 } from '../utils'
 import { ItemResizeManager, ResizeTarget } from './item-resize-manager'
+import { ClickEvent } from 'tapestry-core-client/src/stage/gesture-detector'
 
 type EventTypesMap = {
   resizeHandler: EventTypes<DomDragHandler>
@@ -160,6 +162,18 @@ export class EditorItemController extends ItemController {
     this.dragHandler.deactivate()
   }
 
+  protected onClickItem(event: ClickEvent) {
+    const hoverTarget = event.detail.hoverTarget
+    if (isHoveredElement(hoverTarget) && hoverTarget.uiComponent === 'commentsIndicator') {
+      this.editorStore.dispatch(
+        setInteractiveElement({ modelType: hoverTarget.type, modelId: hoverTarget.modelId }),
+        setSidePane('inline-comments'),
+      )
+    } else {
+      super.onClickItem(event)
+    }
+  }
+
   private onInteractionModeChange = (interactionMode: InteractionMode) => {
     attachListeners(this, 'resizeHandler', this.resizeHandler, interactionMode)
     attachListeners(this, 'dragHandler', this.dragHandler, interactionMode)
@@ -170,7 +184,7 @@ export class EditorItemController extends ItemController {
     const { items, groups } = this.editorStore.get(['items', 'groups'])
     const focus = params.get('focus')
     const element = focus && (items[focus] ?? groups[focus])
-    if (element) {
+    if (element || focus === 'all') {
       void router.navigate(
         { search: params.toString() },
         {

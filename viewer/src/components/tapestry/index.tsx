@@ -17,7 +17,7 @@ import { ViewportController } from 'tapestry-core-client/src/stage/controller/vi
 import { ItemThumbnailController } from 'tapestry-core-client/src/stage/controller/item-thumbnail-controller'
 import { TapestryRenderer } from 'tapestry-core-client/src/stage/renderer'
 import { idMapToArray } from 'tapestry-core/src/utils'
-import { useTapestryStore } from '../../app'
+import { useTapestryData, useTapestryStore } from '../../app'
 import { SidePane } from '../side-pane'
 import { TopToolbar } from '../top-toolbar'
 
@@ -31,6 +31,8 @@ export function Tapestry({ onBack }: TapestryProps) {
   const navigate = useNavigate()
 
   const store = useTapestryStore()
+
+  const hideControls = useTapestryData('hideControls')
 
   useStageInit(sceneRef, {
     gestureDetectorOptions: { scrollGesture: 'pan', dragToPan: store.get('pointerMode') === 'pan' },
@@ -90,7 +92,7 @@ export function Tapestry({ onBack }: TapestryProps) {
         <TapestryCanvas classes={{ root: 'dom-container' }} />
         <ViewportScrollbars />
       </div>
-      <TopToolbar onBack={onBack} />
+      {!hideControls && <TopToolbar onBack={onBack} />}
       <SidePane />
       <ZoomToolbar className="zoom-toolbar" />
     </>

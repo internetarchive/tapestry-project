@@ -99,6 +99,7 @@ export class TapestryDataSync {
     private initialMode: InteractionMode,
     private userAccess: UserAccess,
     private deoptimize: boolean,
+    private hideControls: boolean,
   ) {
     this.socketManager = new SocketManager(tapestryId)
     // The conversion is made because TS forbids more generic add/remove event listener functions
@@ -150,6 +151,7 @@ export class TapestryDataSync {
       commentThreads,
       idMapToArray(this.tapestryRepo.value.presentationSteps),
       this.deoptimize,
+      this.hideControls,
     )
     this._store = new Store(tapestryViewModel, [
       {
