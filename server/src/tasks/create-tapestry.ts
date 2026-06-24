@@ -6,7 +6,6 @@ import { Prisma, PrismaClient, TapestryCreateJob } from '@prisma/client'
 import { ITXClientDenyList } from '@prisma/client/runtime/library'
 import { omit, fromPairs, zip, sumBy } from 'lodash-es'
 import { actionMap, TapestryImportService } from '../services/tapestry-import-service.js'
-import { Dictionary } from 'lodash'
 
 export async function createTapestry({ tapestryCreateJobId }: JobTypeMap['create-tapestry']) {
   const job = await prisma.tapestryCreateJob.findFirstOrThrow({
@@ -155,7 +154,7 @@ async function cloneItems(
   items: Prisma.ItemGetPayload<null>[],
   newTapestryId: string,
   tx: Omit<PrismaClient, ITXClientDenyList>,
-  itemIdMap: Dictionary<string>,
+  itemIdMap: IdMap<string>,
   groupIdMap: IdMap<string>,
 ): Promise<IdMap<string>> {
   const newItems = await tx.item.createManyAndReturn({
@@ -170,7 +169,9 @@ async function cloneItems(
         'actionType',
       ]),
       id: itemIdMap[item.id],
-      ...(item.type === 'actionButton' ? actionMap(itemIdMap, item.action, item.actionType) : {}),
+      ...(item.type === 'actionButton'
+        ? actionMap(itemIdMap, groupIdMap, item.action, item.actionType)
+        : {}),
       groupId: groupIdMap[item.groupId ?? ''],
       tapestryId: newTapestryId,
     })),
